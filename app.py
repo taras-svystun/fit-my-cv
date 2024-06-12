@@ -1,5 +1,6 @@
-# import streamlit as st
-# import streamlit_authenticator as stauth
+from pprint import pprint
+import streamlit as st
+import streamlit_authenticator as stauth
 import os
 import sys
 from pathlib import Path
@@ -10,6 +11,9 @@ from dotenv import load_dotenv
 # I should replace this line by dot env file
 load_dotenv(".env")
 URI = os.getenv("URI")
+MONGO_USER_FIELDS = ['name', 
+                    #  'username', 
+                     'password', 'email']
 
 # Create a new client and connect to the server
 client = MongoClient(URI)
@@ -17,30 +21,31 @@ client = MongoClient(URI)
 # Retrieve all documents from the database
 db = client["projects"]
 collection = db["users"]
-documents = collection.find()
+docs = list(collection.find())
+# I need to create user_data = from list of keys and values
+user_data = {'usernames': {}}
 
-for k, v in documents[0].items():
-    print(k, v)
+
+for doc in docs:
+    user_data['usernames'][doc['username']] = {}
+    for k, v in doc.items():
+        if k in MONGO_USER_FIELDS:
+            user_data['usernames'][doc['username']][k] = v
+
+# pprint(user_data)
+# sys.exit()
 
 
-names = ["Peter Parker", "Rebecca Miller"]
-usernames = ["pparker", "rmiller"]
+authenticator = stauth.Authenticate(user_data,
+    "fit-my-cv", "abcdef", cookie_expiry_days=30)
 
-# load hashed passwords
-file_path = Path(__file__).parent / "hashed_pw.pkl"
-# with file_path.open("rb") as file:
-#     hashed_passwords = pickle.load(file)
+name, authentication_status, username = authenticator.login(location="main", max_login_attempts=15)
 
-# authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
-#     "fit-my-cv", "abcdef", cookie_expiry_days=30)
+if authentication_status == False:
+    st.error("Username/password is incorrect")
 
-# name, authentication_status, username = authenticator.login("Login", "main")
+if authentication_status == None:
+    st.warning("Please enter your username and password")
 
-# if authentication_status == False:
-#     st.error("Username/password is incorrect")
-
-# if authentication_status == None:
-#     st.warning("Please enter your username and password")
-
-# if authentication_status:
-#     st.title("Hello, World!")
+if authentication_status:
+    st.title("Hello, World!")
